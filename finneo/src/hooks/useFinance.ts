@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-// CORREÇÃO 1: Importando o nome correto 'FinanceSummary' (singular)
 import { Account, Transaction, TransactionType, FinanceSummary } from '@/types';
 
 const INITIAL_ACCOUNTS: Account[] = [
@@ -18,18 +17,13 @@ export function useFinance() {
 
   // Carregar dados (apenas no cliente)
   useEffect(() => {
-    // CORREÇÃO 2: setTimeout resolve o erro de "cascading renders"
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined') {
         const savedAccounts = localStorage.getItem('finneo_accounts');
         const savedTransactions = localStorage.getItem('finneo_transactions');
 
-        if (savedAccounts) {
-          setAccounts(JSON.parse(savedAccounts));
-        }
-        if (savedTransactions) {
-          setTransactions(JSON.parse(savedTransactions));
-        }
+        if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
+        if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
         
         setIsLoaded(true);
       }
@@ -38,7 +32,7 @@ export function useFinance() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Salvar dados (apenas após carregamento inicial)
+  // Salvar dados
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('finneo_accounts', JSON.stringify(accounts));
@@ -59,7 +53,8 @@ export function useFinance() {
     return { totalBalance, totalIncome, totalExpense };
   }, [accounts, transactions]);
 
-  // Actions
+  // --- ACTIONS ---
+
   const addTransaction = (amount: number, description: string, type: TransactionType, accountId: string) => {
     const newTransaction: Transaction = {
       id: Date.now(),
@@ -73,6 +68,7 @@ export function useFinance() {
 
     setTransactions(prev => [newTransaction, ...prev]);
 
+    // Atualiza saldo: Receita soma, Despesa subtrai
     setAccounts(prev => prev.map(acc => {
       if (acc.id === accountId) {
         const newBalance = type === 'income' 
@@ -84,12 +80,26 @@ export function useFinance() {
     }));
   };
 
-  const clearData = () => {
-    if (window.confirm("Isso apagará todos os seus dados locais. Continuar?")) {
-      setAccounts(INITIAL_ACCOUNTS);
-      setTransactions([]);
-      localStorage.clear();
-    }
+  const removeTransaction = (transactionId: number) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) return;
+
+    if (!window.confirm("Deseja realmente excluir esta movimentação?")) return;
+
+    // 1. Reverter o saldo na conta original
+    setAccounts(prev => prev.map(acc => {
+      if (acc.id === transaction.accountId) {
+        // Lógica Inversa: Se era Receita, subtrai. Se era Despesa, soma de volta.
+        const reversedBalance = transaction.type === 'income'
+          ? acc.balance - transaction.amount
+          : acc.balance + transaction.amount;
+        return { ...acc, balance: reversedBalance };
+      }
+      return acc;
+    }));
+
+    // 2. Remover da lista
+    setTransactions(prev => prev.filter(t => t.id !== transactionId));
   };
 
   return {
@@ -98,6 +108,6 @@ export function useFinance() {
     summary,
     isLoaded,
     addTransaction,
-    clearData
+    removeTransaction // Nova função exportada
   };
 }

@@ -1,19 +1,17 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, Trash2, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
-import { useFinance } from '@/hooks/useFinance'; // Conectando ao Cérebro (Hook)
-import { formatCurrency, getBankConfig } from '@/lib/utils'; // Usando os Utilitários
+import { Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, Trash2 } from 'lucide-react';
+import { useFinance } from '@/hooks/useFinance';
+import { formatCurrency, getBankConfig } from '@/lib/utils';
 import TransactionModal from './TransactionModal';
 
 export default function TelaInicio() {
-  // Extraindo a lógica e estado do Hook
-  const { accounts, transactions, summary, isLoaded, addTransaction, clearData } = useFinance();
+  // Agora importamos o removeTransaction e removemos o clearData
+  const { accounts, transactions, summary, isLoaded, addTransaction, removeTransaction } = useFinance();
   
-  // Estado local apenas para controle visual do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Evita flash de conteúdo (Hidratação)
   if (!isLoaded) return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400 animate-pulse">Carregando Finneo...</div>;
 
   return (
@@ -29,13 +27,7 @@ export default function TelaInicio() {
               <h1 className="text-sm font-bold tracking-widest uppercase">FINNEO</h1>
             </div>
           </div>
-          <button 
-            onClick={clearData} 
-            className="p-2 bg-gray-800/50 rounded-full text-gray-400 hover:text-red-400 transition-colors backdrop-blur-md" 
-            title="Limpar dados"
-          >
-            <Trash2 size={16} />
-          </button>
+          {/* Botão de "Limpar Tudo" foi removido conforme solicitado */}
         </div>
         <div className="text-center">
           <span className="text-gray-400 text-sm font-medium">Saldo Total</span>
@@ -43,9 +35,8 @@ export default function TelaInicio() {
         </div>
       </header>
 
-      {/* --- CARDS FLUTUANTES (RESUMO) --- */}
+      {/* --- CARDS FLUTUANTES --- */}
       <div className="px-6 -mt-20 relative z-20 grid grid-cols-2 gap-4">
-        {/* Card Entradas */}
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:border-green-100 transition-colors">
           <div className="flex justify-between items-start mb-2">
             <div className="bg-green-50 p-2 rounded-full text-green-600 group-hover:bg-green-100 transition-colors">
@@ -56,7 +47,6 @@ export default function TelaInicio() {
           <span className="text-xl font-bold text-gray-900">{formatCurrency(summary.totalIncome)}</span>
         </div>
 
-        {/* Card Saídas */}
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:border-red-100 transition-colors">
           <div className="flex justify-between items-start mb-2">
             <div className="bg-red-50 p-2 rounded-full text-red-500 group-hover:bg-red-100 transition-colors">
@@ -76,7 +66,6 @@ export default function TelaInicio() {
           <h3 className="text-lg font-bold text-gray-800 mb-4">Minhas Contas</h3>
           <div className="space-y-3">
             {accounts.map(acc => {
-              // Obtém ícone e cor dinamicamente via utils.ts
               const { icon: Icon } = getBankConfig(acc.bank);
               
               return (
@@ -99,7 +88,7 @@ export default function TelaInicio() {
           </div>
         </section>
 
-        {/* HISTÓRICO DE TRANSAÇÕES */}
+        {/* HISTÓRICO COM EXCLUSÃO INDIVIDUAL */}
         <section>
           <h3 className="text-lg font-bold text-gray-800 mb-4">Histórico</h3>
           <div className="flex flex-col gap-3">
@@ -109,8 +98,10 @@ export default function TelaInicio() {
               </div>
             ) : (
               transactions.map(t => (
-                <div key={t.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between animate-in slide-in-from-bottom-2">
-                  <div className="flex items-center gap-4">
+                <div key={t.id} className="group bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between animate-in slide-in-from-bottom-2 relative overflow-hidden">
+                  
+                  {/* Info Transação */}
+                  <div className="flex items-center gap-4 z-10">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'income' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
                       {t.type === 'income' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
                     </div>
@@ -121,9 +112,22 @@ export default function TelaInicio() {
                       </p>
                     </div>
                   </div>
-                  <span className={`font-bold text-sm ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
-                    {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
-                  </span>
+
+                  {/* Valor e Botão Deletar */}
+                  <div className="flex items-center gap-4 z-10">
+                    <span className={`font-bold text-sm ${t.type === 'income' ? 'text-green-600' : 'text-red-500'}`}>
+                      {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount)}
+                    </span>
+                    
+                    {/* Botão de Excluir (Discreto) */}
+                    <button 
+                      onClick={() => removeTransaction(t.id)}
+                      className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                      title="Excluir transação"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -131,7 +135,7 @@ export default function TelaInicio() {
         </section>
       </main>
 
-      {/* --- FAB (BOTÃO FLUTUANTE) --- */}
+      {/* --- FAB --- */}
       <div className="fixed bottom-8 left-0 right-0 flex justify-center z-30 pointer-events-none">
         <button 
           onClick={() => setIsModalOpen(true)} 
