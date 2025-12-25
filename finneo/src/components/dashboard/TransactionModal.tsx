@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowUpCircle, ArrowDownCircle, TrendingUp } from 'lucide-react';
 import { Account, TransactionType } from '@/types';
 import { formatCurrency, getBankConfig } from '@/lib/utils';
@@ -10,13 +10,32 @@ interface TransactionModalProps {
   onClose: () => void;
   onSave: (amount: number, description: string, type: TransactionType, accountId: string) => void;
   accounts: Account[];
+  defaultAccountId?: string;
 }
 
-export default function TransactionModal({ isOpen, onClose, onSave, accounts }: TransactionModalProps) {
+export default function TransactionModal({ isOpen, onClose, onSave, accounts, defaultAccountId }: TransactionModalProps) {
   const [amountInput, setAmountInput] = useState('');
   const [description, setDescription] = useState('');
   const [selectedType, setSelectedType] = useState<TransactionType>('expense');
   const [selectedAccount, setSelectedAccount] = useState<string>('');
+
+  // CORREÇÃO: Lógica ajustada para não depender de 'selectedAccount'
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isOpen) {
+        if (defaultAccountId) {
+          // Se veio do Extrato, força a conta daquela tela
+          setSelectedAccount(defaultAccountId);
+        } else {
+          // Se veio da Home (sem padrão), limpa a seleção para garantir um estado novo
+          // Ao definir '' direto, não precisamos ler o estado anterior, resolvendo o erro do linter
+          setSelectedAccount('');
+        }
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, defaultAccountId]); // Agora as dependências estão completas e corretas
 
   if (!isOpen) return null;
 
@@ -36,19 +55,18 @@ export default function TransactionModal({ isOpen, onClose, onSave, accounts }: 
     
     onSave(rawAmount, description, selectedType, selectedAccount);
     
+    // Limpeza do formulário após salvar
     setAmountInput('');
     setDescription('');
     setSelectedType('expense');
-    setSelectedAccount('');
+    // O selectedAccount será resetado pelo useEffect na próxima abertura
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Overlay com Blur */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
       
-      {/* Card Modal */}
       <div className="bg-white w-full sm:w-[450px] sm:rounded-[2.5rem] rounded-t-[2.5rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 relative z-10 flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-bold text-gray-900">Nova Movimentação</h3>
