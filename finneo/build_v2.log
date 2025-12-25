@@ -1,0 +1,40 @@
+
+> finneo@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.15
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you. Strict-mode is set to false by default.
+   The following mandatory changes were made to your tsconfig.json:
+
+   	- jsx was set to preserve (next.js implements its own optimized jsx transform)
+
+   Collecting page data ...
+   Generating static pages (0/7) ...
+   Generating static pages (1/7) 
+   Generating static pages (3/7) 
+   Generating static pages (5/7) 
+ ✓ Generating static pages (7/7)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    138 B          87.3 kB
+├ ○ /_not-found                          873 B            88 kB
+├ ○ /extrato                             2.7 kB          107 kB
+├ ƒ /extrato/[id]                        2.6 kB          103 kB
+└ ○ /inicio                              2.04 kB         109 kB
++ First Load JS shared by all            87.1 kB
+  ├ chunks/117-b81093938c03b0a4.js       31.6 kB
+  ├ chunks/fd9d1056-1a5a7b6454d350ce.js  53.6 kB
+  └ other shared chunks (total)          1.89 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

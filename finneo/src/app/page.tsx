@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 
-export default function RootPage() {
-  // Redireciona automaticamente para a tela de início dentro do grupo (telas)
+export default function Home() {
   redirect('/inicio');
 }
