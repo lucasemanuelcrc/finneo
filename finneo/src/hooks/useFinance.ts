@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, TransactionType, FinanceSummary } from '@/types';
+import { toast } from 'sonner';
 
 const INITIAL_ACCOUNTS: Account[] = [
   { id: '1', name: 'Nubank', bank: 'nubank', balance: 0, color: 'bg-purple-600' },
@@ -15,7 +16,7 @@ export function useFinance() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Carregar dados (apenas no cliente)
+  // Carregar dados
   useEffect(() => {
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined') {
@@ -28,7 +29,6 @@ export function useFinance() {
         setIsLoaded(true);
       }
     }, 0);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -40,7 +40,7 @@ export function useFinance() {
     }
   }, [accounts, transactions, isLoaded]);
 
-  // Cálculos Memoizados
+  // Cálculos
   const summary: FinanceSummary = useMemo(() => {
     const totalBalance = accounts.reduce((acc, accItem) => acc + accItem.balance, 0);
     const totalIncome = transactions
@@ -68,7 +68,6 @@ export function useFinance() {
 
     setTransactions(prev => [newTransaction, ...prev]);
 
-    // Atualiza saldo: Receita soma, Despesa subtrai
     setAccounts(prev => prev.map(acc => {
       if (acc.id === accountId) {
         const newBalance = type === 'income' 
@@ -78,28 +77,76 @@ export function useFinance() {
       }
       return acc;
     }));
+
+    toast.success('Movimentação registrada!');
   };
 
   const removeTransaction = (transactionId: number) => {
-    const transaction = transactions.find(t => t.id === transactionId);
-    if (!transaction) return;
+    // 1. Encontrar a transação antes de remover
+    const transactionToRemove = transactions.find(t => t.id === transactionId);
+    if (!transactionToRemove) return;
 
-    if (!window.confirm("Deseja realmente excluir esta movimentação?")) return;
+    // 2. Definir a função de restauração (Desfazer)
+    // CORREÇÃO: Removido o espaço no nome da variável (undoRemoval)
+    const undoRemoval = () => {
+      // Reinsere a transação na lista
+      setTransactions(prev => [transactionToRemove, ...prev].sort((a, b) => b.id - a.id));
+      
+      // Reverte o saldo da conta para o estado anterior (com a transação)
+      setAccounts(prev => prev.map(acc => {
+        if (acc.id === transactionToRemove.accountId) {
+          const newBalance = transactionToRemove.type === 'income'
+            ? acc.balance + transactionToRemove.amount
+            : acc.balance - transactionToRemove.amount;
+          return { ...acc, balance: newBalance };
+        }
+        return acc;
+      }));
+      
+      toast.info('Ação desfeita.');
+    };
 
-    // 1. Reverter o saldo na conta original
+    // 3. Executar a remoção imediata (Optimistic UI)
+    setTransactions(prev => prev.filter(t => t.id !== transactionId));
+    
     setAccounts(prev => prev.map(acc => {
-      if (acc.id === transaction.accountId) {
-        // Lógica Inversa: Se era Receita, subtrai. Se era Despesa, soma de volta.
-        const reversedBalance = transaction.type === 'income'
-          ? acc.balance - transaction.amount
-          : acc.balance + transaction.amount;
+      if (acc.id === transactionToRemove.accountId) {
+        // Reverte o impacto no saldo (tira o dinheiro se era receita, devolve se era despesa)
+        const reversedBalance = transactionToRemove.type === 'income'
+          ? acc.balance - transactionToRemove.amount
+          : acc.balance + transactionToRemove.amount;
         return { ...acc, balance: reversedBalance };
       }
       return acc;
     }));
 
-    // 2. Remover da lista
-    setTransactions(prev => prev.filter(t => t.id !== transactionId));
+    // 4. Mostrar Toast com opção de Desfazer
+    toast('Transação removida', {
+      description: transactionToRemove.description,
+      action: {
+        label: 'Desfazer',
+        onClick: () => undoRemoval(), // Chama a função corrigida
+      },
+      duration: 4000,
+    });
+  };
+
+  const clearData = () => {
+    toast('Tem certeza que deseja apagar tudo?', {
+      action: {
+        label: 'Sim, apagar',
+        onClick: () => {
+          setAccounts(INITIAL_ACCOUNTS);
+          setTransactions([]);
+          localStorage.clear();
+          toast.success('App resetado com sucesso.');
+        }
+      },
+      cancel: {
+        label: 'Cancelar',
+        onClick: () => {}
+      }
+    });
   };
 
   return {
@@ -108,6 +155,7 @@ export function useFinance() {
     summary,
     isLoaded,
     addTransaction,
-    removeTransaction // Nova função exportada
+    removeTransaction,
+    clearData
   };
 }
