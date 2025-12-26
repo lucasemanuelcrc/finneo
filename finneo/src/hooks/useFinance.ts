@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, TransactionType, FinanceSummary } from '@/types';
 import { toast } from 'sonner';
 
-// Adicionando a interface interna para Metas (pode mover para src/types depois)
+// Adicionando a interface interna para Metas
 export interface Goal {
   id: string;
   nome: string;
@@ -25,7 +25,7 @@ const INITIAL_ACCOUNTS: Account[] = [
 export function useFinance() {
   const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]); // Novo estado para Metas
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- CARREGAR DADOS ---
@@ -152,6 +152,17 @@ export function useFinance() {
     toast.success('Meta removida.');
   };
 
+  // --- NOVA FUNÇÃO: ADICIONAR VALOR À META ---
+  const updateGoalAmount = (id: string, amount: number) => {
+    setGoals(prev => prev.map(goal => {
+      if (goal.id === id) {
+        return { ...goal, gastoAtual: goal.gastoAtual + amount };
+      }
+      return goal;
+    }));
+    toast.success('Valor adicionado à meta!');
+  };
+
   // --- SISTEMA ---
 
   const clearData = () => {
@@ -172,13 +183,14 @@ export function useFinance() {
   return {
     accounts,
     transactions,
-    goals, // Retornando as metas
+    goals,
     summary,
     isLoaded,
     addTransaction,
     removeTransaction,
-    addGoal, // Retornando função de adicionar meta
-    removeGoal, // Retornando função de remover meta
+    addGoal,
+    removeGoal,
+    updateGoalAmount, // Exportando a nova função
     clearData
   };
 }
