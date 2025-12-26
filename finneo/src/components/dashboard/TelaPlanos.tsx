@@ -24,7 +24,7 @@ export default function TelaPlanos() {
 
   const iconesDisponiveis = ['💰', '🏠', '🚗', '✈️', '🎓', '📱', '💍', '🚴', '🎮', '🏥', '🏢', '🏗️'];
 
-  // CORREÇÃO 1: Timer para evitar Cascading Renders (Erro Amarelo)
+  // Evita erros de hidratação e Cascading Renders
   useEffect(() => {
     const timer = setTimeout(() => {
       setMounted(true);
@@ -32,7 +32,7 @@ export default function TelaPlanos() {
     return () => clearTimeout(timer);
   }, []);
 
-  // CORREÇÃO 2: useCallback para estabilizar a função e evitar warnings de dependência
+  // Memoriza a função de reset para evitar recriação desnecessária
   const resetForm = useCallback(() => {
     setNome('');
     setValor('');
@@ -70,6 +70,7 @@ export default function TelaPlanos() {
     setSelectedGoalId(null);
   };
 
+  // Renderiza nada ou um loader até o cliente estar pronto
   if (!mounted || !isLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -91,7 +92,7 @@ export default function TelaPlanos() {
             <h1 className="text-sm font-bold tracking-widest uppercase">PLANEJAMENTO</h1>
           </div>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => { resetForm(); setShowModal(true); }}
             className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
           >
             <Plus size={24} />
@@ -109,13 +110,13 @@ export default function TelaPlanos() {
       <main className="px-6 -mt-12 relative z-20 space-y-4">
         {goals?.length === 0 ? (
           <div className="bg-white p-12 rounded-[2.5rem] border-2 border-dashed border-gray-200 text-center shadow-sm">
-            <p className="text-gray-500 font-medium font-sans">Nenhuma meta definida ainda.</p>
+            <p className="text-gray-500 font-medium">Nenhuma meta definida ainda.</p>
           </div>
         ) : (
           goals?.map((meta) => {
             const progresso = Math.min((meta.gastoAtual / meta.valor) * 100, 100);
             return (
-              <div key={meta.id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm transition-all">
+              <div key={meta.id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm transition-all hover:shadow-md">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-4">
                     <span className="text-3xl bg-gray-50 w-12 h-12 flex items-center justify-center rounded-2xl shadow-inner">
@@ -135,7 +136,10 @@ export default function TelaPlanos() {
                     >
                       <Plus size={16} />
                     </button>
-                    <button onClick={() => removeGoal(meta.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                    <button 
+                      onClick={() => removeGoal(meta.id)} 
+                      className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -152,7 +156,10 @@ export default function TelaPlanos() {
                       style={{ width: `${progresso}%` }} 
                     />
                   </div>
-                  <p className="text-[9px] text-right font-bold text-gray-400">{progresso.toFixed(1)}% Completo</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-[9px] font-bold text-gray-400">{progresso.toFixed(1)}% Completo</p>
+                    {progresso === 100 && <p className="text-[9px] font-bold text-green-600 uppercase">Meta Batida! 🎉</p>}
+                  </div>
                 </div>
               </div>
             );
@@ -174,7 +181,7 @@ export default function TelaPlanos() {
               <div className="flex gap-3 mt-6">
                 <button 
                   type="button" 
-                  onClick={() => setShowAddValueModal(false)} 
+                  onClick={() => { setShowAddValueModal(false); setAmountToAdd(''); }} 
                   className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-colors"
                 >
                   Cancelar
@@ -204,7 +211,7 @@ export default function TelaPlanos() {
             
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Descrição</label>
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">O que você quer conquistar?</label>
                 <input 
                   type="text" placeholder="Ex: Viagem, Casa Própria..." 
                   value={nome} onChange={e => setNome(e.target.value)}
@@ -241,7 +248,7 @@ export default function TelaPlanos() {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Ícone</label>
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Escolha um ícone</label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {iconesDisponiveis.map(i => (
                     <button 

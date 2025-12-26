@@ -27,3 +27,8 @@ export interface FinanceSummary {
   totalIncome: number;
   totalExpense: number;
 }
+// Adicione ao final do arquivo src/types/index.ts
+export interface UserProfile {
+  name: string;
+  avatar?: string;
+}

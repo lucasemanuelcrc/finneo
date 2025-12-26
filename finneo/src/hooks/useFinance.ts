@@ -28,6 +28,14 @@ export function useFinance() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // --- MEMBER: USUÁRIO ---
+  const [user, setUser] = useState<{ name: string }>({ name: 'Visitante' });
+
+  const updateProfile = (newData: { name: string }) => {
+    setUser(newData);
+    localStorage.setItem('finneo_user', JSON.stringify(newData));
+  };
+
   // --- CARREGAR DADOS ---
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -35,11 +43,13 @@ export function useFinance() {
         const savedAccounts = localStorage.getItem('finneo_accounts');
         const savedTransactions = localStorage.getItem('finneo_transactions');
         const savedGoals = localStorage.getItem('finneo_goals');
+        const savedUser = localStorage.getItem('finneo_user');
 
         if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
         if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
         if (savedGoals) setGoals(JSON.parse(savedGoals));
-        
+        if (savedUser) setUser(JSON.parse(savedUser));
+
         setIsLoaded(true);
       }
     }, 0);
@@ -52,6 +62,13 @@ export function useFinance() {
       localStorage.setItem('finneo_accounts', JSON.stringify(accounts));
       localStorage.setItem('finneo_transactions', JSON.stringify(transactions));
       localStorage.setItem('finneo_goals', JSON.stringify(goals));
+      // User savings is handled directly in updateProfile or initialized here if needed, 
+      // but updateProfile handles the explicit save. 
+      // We can also add it here for redundancy if state changes elsewhere, 
+      // but strict instructions asked for updateProfile to handle it. 
+      // Consistency: Let's rely on updateProfile for user updates as requested, 
+      // but if we wanted auto-save on state change we'd add it here. 
+      // The instructions said "updateProfile... sets state and localstorage".
     }
   }, [accounts, transactions, goals, isLoaded]);
 
@@ -85,8 +102,8 @@ export function useFinance() {
 
     setAccounts(prev => prev.map(acc => {
       if (acc.id === accountId) {
-        const newBalance = type === 'income' 
-          ? acc.balance + amount 
+        const newBalance = type === 'income'
+          ? acc.balance + amount
           : acc.balance - amount;
         return { ...acc, balance: newBalance };
       }
@@ -173,6 +190,7 @@ export function useFinance() {
           setAccounts(INITIAL_ACCOUNTS);
           setTransactions([]);
           setGoals([]);
+          setUser({ name: 'Visitante' });
           localStorage.clear();
           toast.success('App resetado com sucesso.');
         }
@@ -190,7 +208,9 @@ export function useFinance() {
     removeTransaction,
     addGoal,
     removeGoal,
-    updateGoalAmount, // Exportando a nova função
-    clearData
+    updateGoalAmount,
+    clearData,
+    user,
+    updateProfile
   };
 }
