@@ -4,6 +4,17 @@ import { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, TransactionType, FinanceSummary } from '@/types';
 import { toast } from 'sonner';
 
+// Adicionando a interface interna para Metas (pode mover para src/types depois)
+export interface Goal {
+  id: string;
+  nome: string;
+  valor: number;
+  prazo: number;
+  unidade: 'meses' | 'anos';
+  icone: string;
+  gastoAtual: number;
+}
+
 const INITIAL_ACCOUNTS: Account[] = [
   { id: '1', name: 'Nubank', bank: 'nubank', balance: 0, color: 'bg-purple-600' },
   { id: '2', name: 'Banco do Brasil', bank: 'bb', balance: 0, color: 'bg-yellow-400' },
@@ -14,17 +25,20 @@ const INITIAL_ACCOUNTS: Account[] = [
 export function useFinance() {
   const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]); // Novo estado para Metas
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Carregar dados
+  // --- CARREGAR DADOS ---
   useEffect(() => {
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined') {
         const savedAccounts = localStorage.getItem('finneo_accounts');
         const savedTransactions = localStorage.getItem('finneo_transactions');
+        const savedGoals = localStorage.getItem('finneo_goals');
 
         if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
         if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
+        if (savedGoals) setGoals(JSON.parse(savedGoals));
         
         setIsLoaded(true);
       }
@@ -32,15 +46,16 @@ export function useFinance() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Salvar dados
+  // --- SALVAR DADOS ---
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('finneo_accounts', JSON.stringify(accounts));
       localStorage.setItem('finneo_transactions', JSON.stringify(transactions));
+      localStorage.setItem('finneo_goals', JSON.stringify(goals));
     }
-  }, [accounts, transactions, isLoaded]);
+  }, [accounts, transactions, goals, isLoaded]);
 
-  // Cálculos
+  // --- CÁLCULOS ---
   const summary: FinanceSummary = useMemo(() => {
     const totalBalance = accounts.reduce((acc, accItem) => acc + accItem.balance, 0);
     const totalIncome = transactions
@@ -53,7 +68,7 @@ export function useFinance() {
     return { totalBalance, totalIncome, totalExpense };
   }, [accounts, transactions]);
 
-  // --- ACTIONS ---
+  // --- ACTIONS: TRANSAÇÕES ---
 
   const addTransaction = (amount: number, description: string, type: TransactionType, accountId: string) => {
     const newTransaction: Transaction = {
@@ -82,17 +97,11 @@ export function useFinance() {
   };
 
   const removeTransaction = (transactionId: number) => {
-    // 1. Encontrar a transação antes de remover
     const transactionToRemove = transactions.find(t => t.id === transactionId);
     if (!transactionToRemove) return;
 
-    // 2. Definir a função de restauração (Desfazer)
-    // CORREÇÃO: Removido o espaço no nome da variável (undoRemoval)
     const undoRemoval = () => {
-      // Reinsere a transação na lista
       setTransactions(prev => [transactionToRemove, ...prev].sort((a, b) => b.id - a.id));
-      
-      // Reverte o saldo da conta para o estado anterior (com a transação)
       setAccounts(prev => prev.map(acc => {
         if (acc.id === transactionToRemove.accountId) {
           const newBalance = transactionToRemove.type === 'income'
@@ -102,16 +111,12 @@ export function useFinance() {
         }
         return acc;
       }));
-      
       toast.info('Ação desfeita.');
     };
 
-    // 3. Executar a remoção imediata (Optimistic UI)
     setTransactions(prev => prev.filter(t => t.id !== transactionId));
-    
     setAccounts(prev => prev.map(acc => {
       if (acc.id === transactionToRemove.accountId) {
-        // Reverte o impacto no saldo (tira o dinheiro se era receita, devolve se era despesa)
         const reversedBalance = transactionToRemove.type === 'income'
           ? acc.balance - transactionToRemove.amount
           : acc.balance + transactionToRemove.amount;
@@ -120,16 +125,34 @@ export function useFinance() {
       return acc;
     }));
 
-    // 4. Mostrar Toast com opção de Desfazer
     toast('Transação removida', {
       description: transactionToRemove.description,
       action: {
         label: 'Desfazer',
-        onClick: () => undoRemoval(), // Chama a função corrigida
+        onClick: () => undoRemoval(),
       },
       duration: 4000,
     });
   };
+
+  // --- ACTIONS: METAS ---
+
+  const addGoal = (newGoal: Omit<Goal, 'id' | 'gastoAtual'>) => {
+    const goal: Goal = {
+      ...newGoal,
+      id: Date.now().toString(),
+      gastoAtual: 0
+    };
+    setGoals(prev => [...prev, goal]);
+    toast.success('Nova meta estabelecida!');
+  };
+
+  const removeGoal = (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+    toast.success('Meta removida.');
+  };
+
+  // --- SISTEMA ---
 
   const clearData = () => {
     toast('Tem certeza que deseja apagar tudo?', {
@@ -138,13 +161,10 @@ export function useFinance() {
         onClick: () => {
           setAccounts(INITIAL_ACCOUNTS);
           setTransactions([]);
+          setGoals([]);
           localStorage.clear();
           toast.success('App resetado com sucesso.');
         }
-      },
-      cancel: {
-        label: 'Cancelar',
-        onClick: () => {}
       }
     });
   };
@@ -152,10 +172,13 @@ export function useFinance() {
   return {
     accounts,
     transactions,
+    goals, // Retornando as metas
     summary,
     isLoaded,
     addTransaction,
     removeTransaction,
+    addGoal, // Retornando função de adicionar meta
+    removeGoal, // Retornando função de remover meta
     clearData
   };
 }

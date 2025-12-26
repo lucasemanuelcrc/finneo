@@ -1,28 +1,60 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { PieChart, Target, Plus, ChevronRight, AlertCircle } from 'lucide-react';
+import { Target, Plus, X, Trash2, Calendar } from 'lucide-react';
 import { useFinance } from '@/hooks/useFinance';
 import { formatCurrency } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function TelaPlanos() {
-  const { summary, isLoaded } = useFinance();
+  const { isLoaded, goals, addGoal, removeGoal } = useFinance();
+  
+  // Estados de controle de renderização (Corrige os erros das imagens)
   const [mounted, setMounted] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  
+  // Estados do Formulário
+  const [nome, setNome] = useState('');
+  const [valor, setValor] = useState('');
+  const [prazo, setPrazo] = useState('');
+  const [unidade, setUnidade] = useState<'meses' | 'anos'>('meses');
+  const [icone, setIcone] = useState('💰');
 
-  // CORREÇÃO DEFINITIVA: 
-  // O uso do setTimeout com 0ms move a execução do setMounted para o final da fila 
-  // de processamento, garantindo que a renderização inicial do React seja concluída 
-  // antes de disparar uma nova atualização de estado.
+  const iconesDisponiveis = ['💰', '🏠', '🚗', '✈️', '🎓', '📱', '💍', '🚴', '🎮', '🏥', '🏢', '🏗️'];
+
+  // CORREÇÃO: useEffect com timer para evitar Cascading Renders
   useEffect(() => {
     const timer = setTimeout(() => {
       setMounted(true);
     }, 0);
-
     return () => clearTimeout(timer);
   }, []);
 
-  // Bloqueio de renderização para evitar erros de hidratação (SSR vs Client mismatch)
-  // Também aguarda o carregamento dos dados do localStorage via useFinance
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!nome || !valor || !prazo) {
+      toast.error("Preencha todos os campos corretamente.");
+      return;
+    }
+
+    addGoal({
+      nome,
+      valor: parseFloat(valor),
+      prazo: parseInt(prazo),
+      unidade,
+      icone
+    });
+
+    // Reset e Fechar
+    setShowModal(false);
+    setNome('');
+    setValor('');
+    setPrazo('');
+    setIcone('💰');
+  };
+
+  // Enquanto não estiver montado ou os dados não carregarem, evita erro de Hydration
   if (!mounted || !isLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -31,126 +63,144 @@ export default function TelaPlanos() {
     );
   }
 
-  // Dados Mockados para o Design (Podem ser movidos para um estado global futuramente)
-  const metas = [
-    { categoria: "Alimentação", planejado: 800, icone: "🍔", gastoAtual: 520 },
-    { categoria: "Transporte", planejado: 300, icone: "🚗", gastoAtual: 150 },
-    { categoria: "Lazer", planejado: 400, icone: "🍿", gastoAtual: 380 },
-    { categoria: "Saúde", planejado: 200, icone: "💊", gastoAtual: 40 },
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-40">
       
-      {/* --- HEADER (Padrão de Design Finneo) --- */}
+      {/* HEADER */}
       <header className="bg-gradient-to-b from-gray-900 to-black text-white pt-8 pb-32 px-6 rounded-b-[2.5rem] shadow-2xl relative z-10">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-xs font-bold border border-gray-700 text-gray-300">
-              PL
+            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700">
+              <Target size={18} className="text-blue-400" />
             </div>
-            <div>
-              <p className="text-xs text-gray-400">Meu foco</p>
-              <h1 className="text-sm font-bold tracking-widest uppercase">PLANEJAMENTO</h1>
-            </div>
+            <h1 className="text-sm font-bold tracking-widest uppercase">PLANEJAMENTO</h1>
           </div>
+          <button 
+            onClick={() => setShowModal(true)}
+            className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
+          >
+            <Plus size={24} />
+          </button>
         </div>
         <div className="text-center">
-          <span className="text-gray-400 text-sm font-medium">Meta de Economia</span>
+          <p className="text-gray-400 text-sm">Objetivo Total em Metas</p>
           <h2 className="text-4xl font-bold tracking-tight">
-            {formatCurrency(summary.totalBalance * 0.2)}
+            {formatCurrency(goals?.reduce((acc, m) => acc + m.valor, 0) || 0)}
           </h2>
         </div>
       </header>
 
-      {/* --- CARDS DE RESUMO FLUTUANTES --- */}
-      <div className="px-6 -mt-20 relative z-20 grid grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <div className="bg-blue-50 p-2 rounded-full text-blue-600">
-              <PieChart size={20} />
+      {/* LISTA DE METAS */}
+      <main className="px-6 -mt-12 relative z-20 space-y-4">
+        {goals?.length === 0 ? (
+          <div className="bg-white p-12 rounded-[2.5rem] border-2 border-dashed border-gray-200 text-center space-y-4 shadow-sm">
+            <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto text-gray-400">
+              <Plus size={32} />
             </div>
-            <span className="text-[10px] uppercase font-bold text-gray-400">Gastos Reais</span>
+            <p className="text-gray-500 font-medium">Você ainda não definiu metas.<br/>Toque no + para começar.</p>
           </div>
-          <span className="text-xl font-bold text-gray-900">{formatCurrency(summary.totalExpense)}</span>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <div className="bg-purple-50 p-2 rounded-full text-purple-600">
-              <Target size={20} />
-            </div>
-            <span className="text-[10px] uppercase font-bold text-gray-400">Limite Ideal</span>
-          </div>
-          <span className="text-xl font-bold text-gray-900">{formatCurrency(1700)}</span>
-        </div>
-      </div>
-
-      {/* --- LISTA DE METAS POR CATEGORIA --- */}
-      <main className="px-6 mt-8 space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold text-gray-800">Metas Mensais</h3>
-          <button className="text-xs font-bold text-blue-600 flex items-center gap-1 hover:opacity-70 transition-opacity">
-            <Plus size={14} /> Ajustar
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {metas.map((meta, index) => {
-            const porcentagem = (meta.gastoAtual / meta.planejado) * 100;
-            const isAlert = porcentagem > 85;
-
-            return (
-              <div key={index} className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm transition-all active:scale-[0.98]">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{meta.icone}</span>
-                    <div>
-                      <p className="font-bold text-gray-900 text-sm">{meta.categoria}</p>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">
-                        Limite: {formatCurrency(meta.planejado)}
-                      </p>
-                    </div>
+        ) : (
+          goals?.map((meta) => (
+            <div key={meta.id} className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm transition-all group animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl bg-gray-50 w-12 h-12 flex items-center justify-center rounded-2xl shadow-inner">{meta.icone}</span>
+                  <div>
+                    <h4 className="font-bold text-gray-900">{meta.nome}</h4>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1 tracking-tighter">
+                      <Calendar size={10} /> Prazo: {meta.prazo} {meta.unidade}
+                    </p>
                   </div>
-                  {isAlert && <AlertCircle size={18} className="text-orange-500 animate-pulse" />}
-                  <ChevronRight size={18} className="text-gray-300" />
                 </div>
+                <button onClick={() => removeGoal(meta.id)} className="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] mb-1">
+                  <span className="font-black text-gray-900">{formatCurrency(meta.valor)}</span>
+                  <span className="text-gray-400 uppercase font-bold tracking-widest">Meta Final</span>
+                </div>
+                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-black rounded-full" style={{ width: '2%' }} />
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </main>
 
-                {/* Barra de Progresso */}
-                <div className="space-y-2">
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-700 ${isAlert ? 'bg-orange-500' : 'bg-black'}`}
-                      style={{ width: `${Math.min(porcentagem, 100)}%` }}
+      {/* MODAL DE CRIAÇÃO */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black">Nova Meta</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+                <X size={20}/>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Descrição</label>
+                <input 
+                  type="text" placeholder="Ex: Viagem, Casa Própria..." 
+                  value={nome} onChange={e => setNome(e.target.value)}
+                  className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black outline-none font-medium placeholder:text-gray-300 transition-all"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Valor do Objetivo</label>
+                  <input 
+                    type="number" placeholder="0.00" 
+                    value={valor} onChange={e => setValor(e.target.value)}
+                    className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black outline-none font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Tempo</label>
+                  <div className="flex bg-gray-50 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-black">
+                    <input 
+                      type="number" placeholder="12" 
+                      value={prazo} onChange={e => setPrazo(e.target.value)}
+                      className="w-1/2 p-4 bg-transparent border-none outline-none font-medium"
                     />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-gray-400">
-                      {porcentagem.toFixed(0)}% Utilizado
-                    </span>
-                    <span className="text-[10px] font-black text-gray-900">
-                      {formatCurrency(meta.gastoAtual)}
-                    </span>
+                    <select 
+                      value={unidade} onChange={e => setUnidade(e.target.value as 'meses' | 'anos')}
+                      className="w-1/2 bg-transparent border-none text-[10px] font-bold uppercase outline-none px-2"
+                    >
+                      <option value="meses">Meses</option>
+                      <option value="anos">Anos</option>
+                    </select>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </main>
 
-      {/* Banner de Feedback de Saúde Financeira */}
-      <div className="mx-6 mt-8 p-6 bg-green-50 rounded-[2.5rem] border border-green-100 flex items-center gap-4">
-        <div className="bg-green-100 p-3 rounded-2xl text-green-600">
-           <PieChart size={24} />
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Ícone Representativo</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {iconesDisponiveis.map(i => (
+                    <button 
+                      key={i} type="button" onClick={() => setIcone(i)}
+                      className={`text-2xl w-11 h-11 flex items-center justify-center rounded-xl transition-all ${icone === i ? 'bg-black scale-110 shadow-lg' : 'bg-gray-50 hover:bg-gray-100'}`}
+                    >
+                      {i}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button type="submit" className="w-full py-5 bg-black text-white rounded-[2rem] font-bold shadow-xl active:scale-95 transition-transform mt-4 hover:bg-gray-800">
+                Salvar Meta
+              </button>
+            </form>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-bold text-green-900">Bom trabalho!</p>
-          <p className="text-xs text-green-700">
-            Você economizou {formatCurrency(240)} a mais que no mês passado até agora.
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
