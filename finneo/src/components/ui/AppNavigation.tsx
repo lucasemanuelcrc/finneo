@@ -22,7 +22,7 @@ export default function AppNavigation() {
     },
     {
       label: 'Planos',
-      href: '/planejamento', // Futura tela
+      href: '/planos', // Futura tela
       icon: PieChart
     },
     {
