@@ -1,22 +1,24 @@
+// src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { BankType } from "@/types";
 import { CreditCard, Landmark, Building2, Wallet, LucideIcon } from 'lucide-react';
 
-// Função para combinar classes CSS (Shadcn/UI)
+/**
+ * Combina classes CSS de forma inteligente (Shadcn/UI standard)
+ * Resolve conflitos de posicionamento do Tailwind.
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Formatação de moeda BRL
-export function formatCurrency(value: number) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-}
+export const formatCurrency = (val: number): string => {
+  return new Intl.NumberFormat('pt-BR', { 
+    style: 'currency', 
+    currency: 'BRL' 
+  }).format(val);
+};
 
-// Configuração de ícones dos bancos - NECESSÁRIO para as telas
 export const getBankConfig = (bank: BankType): { icon: LucideIcon; defaultColor: string } => {
   switch(bank) {
     case 'nubank': return { icon: CreditCard, defaultColor: 'text-white' };

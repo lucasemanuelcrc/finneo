@@ -32,3 +32,18 @@ export interface UserProfile {
   name: string;
   avatar?: string;
 }
+// src/types/index.ts ou similar
+export interface Goal {
+  id: string;
+  name: string;      // Verificado: Imagem 65a049 pede 'name'
+  valorTotal: number; // Verificado: Imagem 65a049 pede 'valorTotal'
+  gastoAtual: number;
+  prazo: number;
+  unidade: 'meses' | 'anos';
+  icone: string;
+  history: {          // Necessário para a função de histórico que adicionamos
+    id: string;
+    date: string;
+    amount: number;
+  }[];
+}

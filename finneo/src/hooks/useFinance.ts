@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, TransactionType, FinanceSummary } from '@/types';
 import { toast } from 'sonner';
 
-// --- NOVAS INTERFACES PARA O HISTÓRICO ---
+// --- INTERFACES SINCRONIZADAS COM O DESIGN ---
 export interface GoalTransaction {
   id: string;
   date: string;
@@ -13,13 +13,13 @@ export interface GoalTransaction {
 
 export interface Goal {
   id: string;
-  nome: string;
-  valor: number;
+  name: string;      // Alterado para 'name' (conforme erro na imagem 65a049)
+  valorTotal: number; // Alterado para 'valorTotal' (conforme erro na imagem 65a049)
   prazo: number;
   unidade: 'meses' | 'anos';
   icone: string;
   gastoAtual: number;
-  history: GoalTransaction[]; // Adicionamos o histórico aqui
+  history: GoalTransaction[];
 }
 
 const INITIAL_ACCOUNTS: Account[] = [
@@ -34,8 +34,6 @@ export function useFinance() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-
-  // --- MEMBER: USUÁRIO ---
   const [user, setUser] = useState<{ name: string }>({ name: 'Visitante' });
 
   const updateProfile = (newData: { name: string }) => {
@@ -55,18 +53,19 @@ export function useFinance() {
         if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
         if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
         
-        // Carrega metas e garante que todas tenham o array de history (para não quebrar metas antigas)
         if (savedGoals) {
           const parsedGoals = JSON.parse(savedGoals);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setGoals(parsedGoals.map((g: any) => ({
             ...g,
+            // Mapeamento de segurança para metas antigas (migração de nomes)
+            name: g.name || g.nome || "Meta sem nome",
+            valorTotal: g.valorTotal || g.valor || 0,
             history: g.history || [] 
           })));
         }
 
         if (savedUser) setUser(JSON.parse(savedUser));
-
         setIsLoaded(true);
       }
     }, 0);
@@ -96,7 +95,6 @@ export function useFinance() {
   }, [accounts, transactions]);
 
   // --- ACTIONS: TRANSAÇÕES ---
-
   const addTransaction = (amount: number, description: string, type: TransactionType, accountId: string) => {
     const newTransaction: Transaction = {
       id: Date.now(),
@@ -112,9 +110,7 @@ export function useFinance() {
 
     setAccounts(prev => prev.map(acc => {
       if (acc.id === accountId) {
-        const newBalance = type === 'income'
-          ? acc.balance + amount
-          : acc.balance - amount;
+        const newBalance = type === 'income' ? acc.balance + amount : acc.balance - amount;
         return { ...acc, balance: newBalance };
       }
       return acc;
@@ -127,20 +123,6 @@ export function useFinance() {
     const transactionToRemove = transactions.find(t => t.id === transactionId);
     if (!transactionToRemove) return;
 
-    const undoRemoval = () => {
-      setTransactions(prev => [transactionToRemove, ...prev].sort((a, b) => b.id - a.id));
-      setAccounts(prev => prev.map(acc => {
-        if (acc.id === transactionToRemove.accountId) {
-          const newBalance = transactionToRemove.type === 'income'
-            ? acc.balance + transactionToRemove.amount
-            : acc.balance - transactionToRemove.amount;
-          return { ...acc, balance: newBalance };
-        }
-        return acc;
-      }));
-      toast.info('Ação desfeita.');
-    };
-
     setTransactions(prev => prev.filter(t => t.id !== transactionId));
     setAccounts(prev => prev.map(acc => {
       if (acc.id === transactionToRemove.accountId) {
@@ -152,24 +134,16 @@ export function useFinance() {
       return acc;
     }));
 
-    toast('Transação removida', {
-      description: transactionToRemove.description,
-      action: {
-        label: 'Desfazer',
-        onClick: () => undoRemoval(),
-      },
-      duration: 4000,
-    });
+    toast.success('Transação removida');
   };
 
-  // --- ACTIONS: METAS (ATUALIZADO) ---
-
+  // --- ACTIONS: METAS (NOMES CORRIGIDOS) ---
   const addGoal = (newGoal: Omit<Goal, 'id' | 'gastoAtual' | 'history'>) => {
     const goal: Goal = {
       ...newGoal,
       id: Date.now().toString(),
       gastoAtual: 0,
-      history: [] // Inicializa histórico vazio
+      history: []
     };
     setGoals(prev => [...prev, goal]);
     toast.success('Nova meta estabelecida!');
@@ -180,11 +154,9 @@ export function useFinance() {
     toast.success('Meta removida.');
   };
 
-  // --- FUNÇÃO ATUALIZADA: GRAVA NO HISTÓRICO ---
   const updateGoalAmount = (id: string, amount: number) => {
     setGoals(prev => prev.map(goal => {
       if (goal.id === id) {
-        // Cria registro do depósito
         const newEntry: GoalTransaction = {
             id: Date.now().toString(),
             date: new Date().toISOString(),
@@ -194,45 +166,26 @@ export function useFinance() {
         return { 
             ...goal, 
             gastoAtual: goal.gastoAtual + amount,
-            history: [newEntry, ...goal.history] // Adiciona no histórico
+            history: [newEntry, ...goal.history]
         };
       }
       return goal;
     }));
-    toast.success('Valor adicionado à meta!');
+    toast.success('Valor adicionado!');
   };
 
-  // --- SISTEMA ---
-
   const clearData = () => {
-    toast('Tem certeza que deseja apagar tudo?', {
-      action: {
-        label: 'Sim, apagar',
-        onClick: () => {
-          setAccounts(INITIAL_ACCOUNTS);
-          setTransactions([]);
-          setGoals([]);
-          setUser({ name: 'Visitante' });
-          localStorage.clear();
-          toast.success('App resetado com sucesso.');
-        }
-      }
-    });
+    setAccounts(INITIAL_ACCOUNTS);
+    setTransactions([]);
+    setGoals([]);
+    setUser({ name: 'Visitante' });
+    localStorage.clear();
+    toast.success('Dados limpos.');
   };
 
   return {
-    accounts,
-    transactions,
-    goals,
-    summary,
-    isLoaded,
-    addTransaction,
-    removeTransaction,
-    addGoal,
-    removeGoal,
-    updateGoalAmount,
-    clearData,
-    user,
-    updateProfile
+    accounts, transactions, goals, summary, isLoaded,
+    addTransaction, removeTransaction, addGoal, removeGoal,
+    updateGoalAmount, clearData, user, updateProfile
   };
 }
