@@ -1,12 +1,10 @@
-// src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { BankType } from "@/types";
 import { CreditCard, Landmark, Building2, Wallet, LucideIcon } from 'lucide-react';
 
 /**
- * Combina classes CSS de forma inteligente (Shadcn/UI standard)
- * Resolve conflitos de posicionamento do Tailwind.
+ * Combina classes CSS de forma inteligente e evita conflitos
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
