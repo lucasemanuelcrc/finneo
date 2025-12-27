@@ -1,273 +1,199 @@
-"use client";
+"use client"; //
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Target, Plus, X, Trash2 } from 'lucide-react';
-import { useFinance } from '@/hooks/useFinance';
+import React, { useState } from 'react';
+import { Target, Plus, Trash2, Calendar, History } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { useFinance, Goal } from '@/hooks/useFinance';
 import { formatCurrency } from '@/lib/utils';
-import { toast } from 'sonner';
 
-export default function TelaPlanos() {
-  const { isLoaded, goals, addGoal, removeGoal, updateGoalAmount } = useFinance();
+export default function TelaPlanos() { // Alterado para export default para evitar erro de tipo undefined
+  const { goals, addGoal, removeGoal, updateGoalAmount } = useFinance();
   
-  const [mounted, setMounted] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [showAddValueModal, setShowAddValueModal] = useState(false);
-  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [amountToAdd, setAmountToAdd] = useState('');
 
-  // Estados do Formulário
-  const [nome, setNome] = useState('');
-  const [valor, setValor] = useState('');
-  const [prazo, setPrazo] = useState('');
-  const [unidade, setUnidade] = useState<'meses' | 'anos'>('meses');
-  const [icone, setIcone] = useState('💰');
+  const [newGoalName, setNewGoalName] = useState('');
+  const [newGoalValue, setNewGoalValue] = useState('');
 
-  const iconesDisponiveis = ['💰', '🏠', '🚗', '✈️', '🎓', '📱', '💍', '🚴', '🎮', '🏥', '🏢', '🏗️'];
-
-  // Evita erros de hidratação e Cascading Renders
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Memoriza a função de reset para evitar recriação desnecessária
-  const resetForm = useCallback(() => {
-    setNome('');
-    setValor('');
-    setPrazo('');
-    setIcone('💰');
-    setUnidade('meses');
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nome || !valor || !prazo) {
-      toast.error("Preencha todos os campos.");
-      return;
-    }
-
+  const handleCreateGoal = () => {
+    if (!newGoalName || !newGoalValue) return;
     addGoal({
-      nome,
-      valor: parseFloat(valor),
-      prazo: parseInt(prazo),
-      unidade,
-      icone
+      nome: newGoalName,
+      valor: Number(newGoalValue),
+      prazo: 12,
+      unidade: 'meses',
+      icone: 'Target'
     });
-
-    setShowModal(false);
-    resetForm();
+    setNewGoalName('');
+    setNewGoalValue('');
+    setIsAddOpen(false);
   };
 
-  const handleAddValue = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedGoalId || !amountToAdd) return;
-    
-    updateGoalAmount(selectedGoalId, parseFloat(amountToAdd));
-    setShowAddValueModal(false);
+  const handleAddMoney = () => {
+    if (!selectedGoal || !amountToAdd) return;
+    updateGoalAmount(selectedGoal.id, Number(amountToAdd));
     setAmountToAdd('');
-    setSelectedGoalId(null);
   };
-
-  // Renderiza nada ou um loader até o cliente estar pronto
-  if (!mounted || !isLoaded) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-black"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-40">
-      
-      {/* HEADER */}
-      <header className="bg-gradient-to-b from-gray-900 to-black text-white pt-8 pb-32 px-6 rounded-b-[2.5rem] shadow-2xl relative z-10">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700">
-              <Target size={18} className="text-blue-400" />
+    <div className="space-y-6 pb-24">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">Minhas Metas</h2>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" /> Nova Meta
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Criar Nova Meta</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <Input 
+                placeholder="Nome da meta (ex: Viagem)" 
+                value={newGoalName}
+                onChange={(e) => setNewGoalName(e.target.value)}
+              />
+              <Input 
+                type="number" 
+                placeholder="Valor total (ex: 5000)" 
+                value={newGoalValue}
+                onChange={(e) => setNewGoalValue(e.target.value)}
+              />
+              <Button onClick={handleCreateGoal} className="w-full bg-blue-600">Criar Meta</Button>
             </div>
-            <h1 className="text-sm font-bold tracking-widest uppercase">PLANEJAMENTO</h1>
-          </div>
-          <button 
-            onClick={() => { resetForm(); setShowModal(true); }}
-            className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
-          >
-            <Plus size={24} />
-          </button>
-        </div>
-        <div className="text-center">
-          <p className="text-gray-400 text-sm">Economia Acumulada em Metas</p>
-          <h2 className="text-4xl font-bold tracking-tight">
-            {formatCurrency(goals?.reduce((acc, m) => acc + (m.gastoAtual || 0), 0) || 0)}
-          </h2>
-        </div>
-      </header>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      {/* LISTA DE METAS */}
-      <main className="px-6 -mt-12 relative z-20 space-y-4">
-        {goals?.length === 0 ? (
-          <div className="bg-white p-12 rounded-[2.5rem] border-2 border-dashed border-gray-200 text-center shadow-sm">
-            <p className="text-gray-500 font-medium">Nenhuma meta definida ainda.</p>
+      <div className="grid grid-cols-1 gap-4">
+        {goals.length === 0 ? (
+          <div className="text-center py-10 text-gray-500 bg-white rounded-xl border border-dashed">
+            <Target className="w-12 h-12 mx-auto mb-3 opacity-20" />
+            <p>Nenhuma meta criada ainda.</p>
           </div>
         ) : (
-          goals?.map((meta) => {
-            const progresso = Math.min((meta.gastoAtual / meta.valor) * 100, 100);
+          goals.map((goal) => {
+            const percentage = Math.min(100, Math.round((goal.gastoAtual / goal.valor) * 100));
+            
             return (
-              <div key={meta.id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl bg-gray-50 w-12 h-12 flex items-center justify-center rounded-2xl shadow-inner">
-                      {meta.icone}
-                    </span>
-                    <div>
-                      <h4 className="font-bold text-gray-900">{meta.nome}</h4>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
-                        Prazo: {meta.prazo} {meta.unidade}
-                      </p>
+              <Card 
+                key={goal.id} 
+                className="cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden"
+                onClick={() => setSelectedGoal(goal)}
+              >
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
+                        <Target className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">{goal.nome}</h3>
+                        <p className="text-sm text-gray-500">
+                          Meta: {formatCurrency(goal.valor)}
+                        </p>
+                      </div>
                     </div>
+                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                      {percentage}%
+                    </span>
                   </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => { setSelectedGoalId(meta.id); setShowAddValueModal(true); }}
-                      className="p-2 bg-black text-white rounded-full hover:scale-110 transition-transform shadow-lg"
-                    >
-                      <Plus size={16} />
-                    </button>
-                    <button 
-                      onClick={() => removeGoal(meta.id)} 
-                      className="p-2 text-gray-300 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Guardado</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(goal.gastoAtual)}</span>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-gray-900">{formatCurrency(meta.gastoAtual)}</span>
-                    <span className="text-gray-400">Objetivo: {formatCurrency(meta.valor)}</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner">
-                    <div 
-                      className={`h-full transition-all duration-1000 ${progresso === 100 ? 'bg-green-500' : 'bg-black'}`} 
-                      style={{ width: `${progresso}%` }} 
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-[9px] font-bold text-gray-400">{progresso.toFixed(1)}% Completo</p>
-                    {progresso === 100 && <p className="text-[9px] font-bold text-green-600 uppercase">Meta Batida! 🎉</p>}
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             );
           })
         )}
-      </main>
+      </div>
 
-      {/* MODAL ADICIONAR VALOR */}
-      {showAddValueModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 animate-in zoom-in-95 duration-200 shadow-2xl">
-            <h3 className="text-xl font-black mb-6 text-center text-gray-900">Adicionar Valor</h3>
-            <form onSubmit={handleAddValue} className="space-y-4">
-              <input 
-                type="number" step="0.01" autoFocus placeholder="R$ 0,00" 
-                value={amountToAdd} onChange={e => setAmountToAdd(e.target.value)}
-                className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black outline-none font-bold text-center text-2xl text-gray-900"
-              />
-              <div className="flex gap-3 mt-6">
-                <button 
-                  type="button" 
-                  onClick={() => { setShowAddValueModal(false); setAmountToAdd(''); }} 
-                  className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-4 bg-black text-white rounded-2xl font-bold hover:bg-gray-800 shadow-lg active:scale-95 transition-all"
-                >
-                  Confirmar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Dialog open={!!selectedGoal} onOpenChange={(open) => !open && setSelectedGoal(null)}>
+        <DialogContent className="max-w-md">
+          {selectedGoal && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex justify-between items-center">
+                  <span>{selectedGoal.nome}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeGoal(selectedGoal.id);
+                      setSelectedGoal(null);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </DialogTitle>
+              </DialogHeader>
 
-      {/* MODAL CRIAR META */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300">
-             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-gray-900">Nova Meta</h3>
-              <button onClick={() => setShowModal(false)} className="p-2 bg-gray-100 rounded-full text-gray-400 hover:text-black transition-colors">
-                <X size={20}/>
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">O que você quer conquistar?</label>
-                <input 
-                  type="text" placeholder="Ex: Viagem, Casa Própria..." 
-                  value={nome} onChange={e => setNome(e.target.value)}
-                  className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black outline-none font-medium placeholder:text-gray-300 transition-all text-gray-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Valor do Objetivo</label>
-                  <input 
-                    type="number" placeholder="0.00" 
-                    value={valor} onChange={e => setValor(e.target.value)}
-                    className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black outline-none font-medium text-gray-900"
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3 mb-4">
+                <label className="text-sm font-medium text-gray-700">Adicionar valor à meta</label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="number" 
+                    placeholder="R$ 0,00"
+                    value={amountToAdd}
+                    onChange={(e) => setAmountToAdd(e.target.value)}
+                    className="bg-white"
                   />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Tempo</label>
-                  <div className="flex bg-gray-50 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-black">
-                    <input 
-                      type="number" placeholder="12" 
-                      value={prazo} onChange={e => setPrazo(e.target.value)}
-                      className="w-1/2 p-4 bg-transparent border-none outline-none font-medium text-gray-900"
-                    />
-                    <select 
-                      value={unidade} onChange={e => setUnidade(e.target.value as 'meses' | 'anos')}
-                      className="w-1/2 bg-transparent border-none text-[10px] font-bold uppercase outline-none px-2 text-gray-900"
-                    >
-                      <option value="meses">Meses</option>
-                      <option value="anos">Anos</option>
-                    </select>
-                  </div>
+                  <Button onClick={handleAddMoney} className="bg-green-600 hover:bg-green-700">
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
 
-              <div>
-                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Escolha um ícone</label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {iconesDisponiveis.map(i => (
-                    <button 
-                      key={i} type="button" onClick={() => setIcone(i)}
-                      className={`text-2xl w-11 h-11 flex items-center justify-center rounded-xl transition-all ${icone === i ? 'bg-black scale-110 shadow-lg' : 'bg-gray-50 hover:bg-gray-100'}`}
-                    >
-                      {i}
-                    </button>
-                  ))}
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
+                  <History className="w-4 h-4" /> Histórico de Depósitos
+                </h4>
+                
+                <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
+                  {selectedGoal.history && selectedGoal.history.length > 0 ? (
+                    selectedGoal.history.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center text-sm p-2 bg-white border rounded-md">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="w-3 h-3" />
+                          <span>
+                            {new Date(item.date).toLocaleDateString('pt-BR', {
+                              day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute:'2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-green-600">
+                          + {formatCurrency(item.amount)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-400 text-center py-4">Nenhum depósito registrado.</p>
+                  )}
                 </div>
               </div>
 
-              <button type="submit" className="w-full py-5 bg-black text-white rounded-[2rem] font-bold shadow-xl active:scale-95 transition-transform mt-4 hover:bg-gray-800">
-                Criar Meta
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+              <div className="pt-4 mt-2 border-t flex justify-between items-center">
+                 <span className="text-gray-500">Total Acumulado</span>
+                 <span className="text-xl font-bold text-gray-900">{formatCurrency(selectedGoal.gastoAtual)}</span>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

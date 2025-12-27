@@ -4,7 +4,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, TransactionType, FinanceSummary } from '@/types';
 import { toast } from 'sonner';
 
-// Adicionando a interface interna para Metas
+// --- NOVAS INTERFACES PARA O HISTÓRICO ---
+export interface GoalTransaction {
+  id: string;
+  date: string;
+  amount: number;
+}
+
 export interface Goal {
   id: string;
   nome: string;
@@ -13,6 +19,7 @@ export interface Goal {
   unidade: 'meses' | 'anos';
   icone: string;
   gastoAtual: number;
+  history: GoalTransaction[]; // Adicionamos o histórico aqui
 }
 
 const INITIAL_ACCOUNTS: Account[] = [
@@ -47,7 +54,17 @@ export function useFinance() {
 
         if (savedAccounts) setAccounts(JSON.parse(savedAccounts));
         if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
-        if (savedGoals) setGoals(JSON.parse(savedGoals));
+        
+        // Carrega metas e garante que todas tenham o array de history (para não quebrar metas antigas)
+        if (savedGoals) {
+          const parsedGoals = JSON.parse(savedGoals);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setGoals(parsedGoals.map((g: any) => ({
+            ...g,
+            history: g.history || [] 
+          })));
+        }
+
         if (savedUser) setUser(JSON.parse(savedUser));
 
         setIsLoaded(true);
@@ -62,13 +79,6 @@ export function useFinance() {
       localStorage.setItem('finneo_accounts', JSON.stringify(accounts));
       localStorage.setItem('finneo_transactions', JSON.stringify(transactions));
       localStorage.setItem('finneo_goals', JSON.stringify(goals));
-      // User savings is handled directly in updateProfile or initialized here if needed, 
-      // but updateProfile handles the explicit save. 
-      // We can also add it here for redundancy if state changes elsewhere, 
-      // but strict instructions asked for updateProfile to handle it. 
-      // Consistency: Let's rely on updateProfile for user updates as requested, 
-      // but if we wanted auto-save on state change we'd add it here. 
-      // The instructions said "updateProfile... sets state and localstorage".
     }
   }, [accounts, transactions, goals, isLoaded]);
 
@@ -152,13 +162,14 @@ export function useFinance() {
     });
   };
 
-  // --- ACTIONS: METAS ---
+  // --- ACTIONS: METAS (ATUALIZADO) ---
 
-  const addGoal = (newGoal: Omit<Goal, 'id' | 'gastoAtual'>) => {
+  const addGoal = (newGoal: Omit<Goal, 'id' | 'gastoAtual' | 'history'>) => {
     const goal: Goal = {
       ...newGoal,
       id: Date.now().toString(),
-      gastoAtual: 0
+      gastoAtual: 0,
+      history: [] // Inicializa histórico vazio
     };
     setGoals(prev => [...prev, goal]);
     toast.success('Nova meta estabelecida!');
@@ -169,11 +180,22 @@ export function useFinance() {
     toast.success('Meta removida.');
   };
 
-  // --- NOVA FUNÇÃO: ADICIONAR VALOR À META ---
+  // --- FUNÇÃO ATUALIZADA: GRAVA NO HISTÓRICO ---
   const updateGoalAmount = (id: string, amount: number) => {
     setGoals(prev => prev.map(goal => {
       if (goal.id === id) {
-        return { ...goal, gastoAtual: goal.gastoAtual + amount };
+        // Cria registro do depósito
+        const newEntry: GoalTransaction = {
+            id: Date.now().toString(),
+            date: new Date().toISOString(),
+            amount: amount
+        };
+
+        return { 
+            ...goal, 
+            gastoAtual: goal.gastoAtual + amount,
+            history: [newEntry, ...goal.history] // Adiciona no histórico
+        };
       }
       return goal;
     }));
