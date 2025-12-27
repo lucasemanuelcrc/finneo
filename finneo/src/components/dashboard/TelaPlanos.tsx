@@ -2,10 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Wallet, ChevronRight, X, History, Trash2, Calendar } from 'lucide-react';
-import { useFinance } from '@/hooks/useFinance';
+import { ArrowLeft, Plus, Target, Wallet, ChevronRight, X, History, Trash2, Calendar } from 'lucide-react';
+import { useFinance, Goal } from '@/hooks/useFinance';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Goal } from '@/hooks/useFinance';
 
 export default function TelaPlanos() {
   const router = useRouter();
@@ -79,51 +78,82 @@ export default function TelaPlanos() {
 
       {/* --- LISTA DE METAS --- */}
       <main className="px-6 -mt-12 relative z-20 space-y-4">
-        {goals.map((goal) => {
-          const percentage = Math.min(100, Math.round((goal.gastoAtual / goal.valorTotal) * 100));
-          return (
-            <div 
-              key={goal.id} 
-              onClick={() => setSelectedGoal(goal)}
-              className="bg-white p-5 rounded-[2.2rem] border border-gray-100 shadow-md active:scale-[0.98] transition-all cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="w-14 h-14 rounded-[1.2rem] flex items-center justify-center shrink-0 bg-gray-50 text-2xl shadow-inner border border-gray-100">
-                    {goal.icone}
+        {goals.length === 0 ? (
+          /* CARD DE ESTADO VAZIO ADICIONADO */
+          <div className="bg-white p-12 rounded-[2.5rem] border-2 border-dashed border-gray-200 text-center shadow-sm">
+             <Target size={40} className="mx-auto mb-3 opacity-10 text-black" />
+            <p className="text-gray-400 text-sm font-medium">Nenhum plano ativo no momento.</p>
+          </div>
+        ) : (
+          goals.map((goal) => {
+            const percentage = Math.min(100, Math.round((goal.gastoAtual / goal.valorTotal) * 100));
+            return (
+              <div 
+                key={goal.id} 
+                onClick={() => setSelectedGoal(goal)}
+                className="bg-white p-5 rounded-[2.2rem] border border-gray-100 shadow-md active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-14 h-14 rounded-[1.2rem] flex items-center justify-center shrink-0 bg-gray-50 text-2xl shadow-inner border border-gray-100">
+                      {goal.icone}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 truncate">{goal.name}</h3>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {goal.prazo} {goal.unidade}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 truncate">{goal.name}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      {goal.prazo} {goal.unidade}
-                    </p>
-                  </div>
+                  <ChevronRight size={18} className="text-gray-300" />
                 </div>
-                <ChevronRight size={18} className="text-gray-300" />
-              </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-2xl font-black text-gray-900 tracking-tighter">{formatCurrency(goal.gastoAtual)}</span>
-                  <span className="text-xs font-bold text-gray-400">Objetivo: {formatCurrency(goal.valorTotal)}</span>
-                </div>
-                <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner">
-                  <div 
-                    className={cn("h-full rounded-full transition-all duration-1000", percentage >= 100 ? "bg-blue-600" : "bg-black")}
-                    style={{ width: `${percentage}%` }} 
-                  />
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Acumulado</span>
+                      <span className="text-2xl font-black text-gray-900 tracking-tighter">{formatCurrency(goal.gastoAtual)}</span>
+                    </div>
+                    <div className="text-right">
+                       <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest block mb-1">Objetivo</span>
+                       <span className="text-xs font-bold text-gray-400">{formatCurrency(goal.valorTotal)}</span>
+                    </div>
+                  </div>
+                  <div className="relative h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner">
+                    <div 
+                      className={cn(
+                        "absolute left-0 top-0 h-full rounded-full transition-all duration-1000 ease-out",
+                        percentage >= 100 ? "bg-blue-600" : "bg-black"
+                      )}
+                      style={{ width: `${percentage}%` }} 
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">{percentage}% concluído</span>
+                    {percentage >= 100 && (
+                      <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tighter">
+                        Meta Batida 🎉
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </main>
 
-      {/* --- FAB --- */}
+      {/* --- BOTÃO FLUTUANTE (FAB) --- */}
+      {/* Ajustado para bottom-40 para garantir que não seja cortado */}
       <div className="fixed bottom-40 left-0 right-0 flex justify-center z-40 pointer-events-none px-6">
-        <button onClick={() => setIsCreateModalOpen(true)} className="pointer-events-auto w-full max-w-xs bg-black text-white py-5 rounded-[1.8rem] shadow-2xl flex items-center justify-center gap-3">
-          <Plus size={18} strokeWidth={3} />
-          <span className="font-bold text-sm">Criar Nova Meta</span>
+        <button 
+          onClick={() => setIsCreateModalOpen(true)} 
+          className="pointer-events-auto w-full max-w-xs bg-black text-white py-5 rounded-[1.8rem] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 border border-white/5"
+        >
+          <div className="bg-white/20 p-1 rounded-lg">
+            <Plus size={18} strokeWidth={3} />
+          </div>
+          <span className="font-bold text-sm tracking-tight">Criar Nova Meta</span>
         </button>
       </div>
 
@@ -198,19 +228,19 @@ export default function TelaPlanos() {
               <button onClick={() => setIsCreateModalOpen(false)} className="p-2 bg-gray-100 rounded-full text-gray-400"><X size={20} /></button>
             </div>
             <form onSubmit={handleCreateGoal} className="space-y-5">
-              <input type="text" required placeholder="Nome do objetivo" value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-medium" />
+              <input type="text" required placeholder="Nome do objetivo" value={name} onChange={e => setName(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-medium text-gray-900" />
               <div className="grid grid-cols-2 gap-4">
-                <input type="number" required placeholder="R$ Total" value={valorTotal} onChange={e => setValorTotal(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-medium" />
+                <input type="number" required placeholder="R$ Total" value={valorTotal} onChange={e => setValorTotal(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-medium text-gray-900" />
                 <div className="flex bg-gray-50 rounded-2xl overflow-hidden">
-                  <input type="number" required placeholder="Prazo" value={prazo} onChange={e => setPrazo(e.target.value)} className="w-1/2 p-4 bg-transparent border-none outline-none font-medium" />
-                  <select value={unidade} onChange={e => setUnidade(e.target.value as 'meses' | 'anos')} className="w-1/2 bg-transparent border-none text-[10px] font-bold uppercase outline-none px-2">
+                  <input type="number" required placeholder="Prazo" value={prazo} onChange={e => setPrazo(e.target.value)} className="w-1/2 p-4 bg-transparent border-none outline-none font-medium text-gray-900" />
+                  <select value={unidade} onChange={e => setUnidade(e.target.value as 'meses' | 'anos')} className="w-1/2 bg-transparent border-none text-[10px] font-bold uppercase outline-none px-2 text-gray-900">
                     <option value="meses">Meses</option><option value="anos">Anos</option>
                   </select>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {emojisDisponiveis.map(e => (
-                  <button key={e} type="button" onClick={() => setIcone(e)} className={cn("text-2xl w-11 h-11 flex items-center justify-center rounded-xl transition-all", icone === e ? "bg-black scale-110 shadow-lg" : "bg-gray-50")}>{e}</button>
+                  <button key={e} type="button" onClick={() => setIcone(e)} className={cn("text-2xl w-11 h-11 flex items-center justify-center rounded-xl transition-all", icone === e ? "bg-black scale-110 shadow-lg" : "bg-gray-50 hover:bg-gray-100")}>{e}</button>
                 ))}
               </div>
               <button type="submit" className="w-full py-5 bg-black text-white rounded-[2rem] font-bold shadow-xl active:scale-95 transition-all mt-4">Confirmar Plano</button>
